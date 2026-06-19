@@ -11,6 +11,7 @@ import {
   type MigrationRecord,
 } from "@np2wp/core";
 import { z } from "zod";
+import { Queue } from "bullmq";
 import { PostgresMigrationRepository } from "@np2wp/database";
 import { S3ArtifactStore } from "@np2wp/storage";
 import { dashboardHtml } from "./dashboard.js";
@@ -69,6 +70,12 @@ const createSchema = z.object({
   name: z.string().min(2).max(120),
   source: sourceConfigSchema,
   destination: wordpressConfigSchema.optional(),
+  priority: z.number().int().min(1).max(10).default(5),
+});
+const updateSchema = z.object({
+  name: z.string().min(2).max(120).optional(),
+  priority: z.number().int().min(1).max(10).optional(),
+  destination: wordpressConfigSchema.nullable().optional(),
 });
 
 function tenantId(headers: Record<string, unknown>): string {
@@ -111,6 +118,79 @@ function publicRecord(record: MigrationRecord): Record<string, unknown> {
     destination = safeDestination;
   }
   return redactSecrets({ ...record, source, destination });
+}
+
+function addEvent(
+  record: MigrationRecord,
+  kind: MigrationRecord["events"][number]["kind"],
+  message: string,
+  metadata?: Record<string, unknown>,
+): void {
+  record.events ??= [];
+  record.events.push({
+    id: randomUUID(),
+    kind,
+    message,
+    createdAt: new Date().toISOString(),
+    step: record.currentStep,
+    metadata,
+  });
+  record.events = record.events.slice(-250);
+}
+
+function migrationQueue(): Queue {
+  return new Queue("np2wp-migrations", {
+    connection: { url: process.env.REDIS_URL ?? "redis://localhost:6379" },
+  });
+}
+
+async function enqueue(record: MigrationRecord): Promise<string> {
+  record.runAttempt = (record.runAttempt ?? 0) + 1;
+  record.status = "queued";
+  record.controlRequested = undefined;
+  record.error = undefined;
+  record.updatedAt = new Date().toISOString();
+  const jobId = `${record.id}-${record.runAttempt}`;
+  addEvent(record, "queued", `Run ${record.runAttempt} queued.`, {
+    jobId,
+    priority: record.priority,
+  });
+  await repository.save(record);
+
+  if (inline) {
+    void service.run(record).catch((error) => app.log.error(error));
+    return jobId;
+  }
+
+  const queue = migrationQueue();
+  try {
+    await queue.add(
+      "run-migration",
+      {
+        migrationId: record.id,
+        tenantId: record.tenantId,
+        runAttempt: record.runAttempt,
+      },
+      {
+        jobId,
+        priority: 11 - record.priority,
+        attempts: 3,
+        backoff: { type: "exponential", delay: 10_000 },
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    );
+  } catch (error) {
+    record.status = "failed";
+    record.error = `Queue submission failed: ${error instanceof Error ? error.message : String(error)}`;
+    record.updatedAt = new Date().toISOString();
+    addEvent(record, "failed", record.error);
+    await repository.save(record);
+    throw error;
+  } finally {
+    await queue.close();
+  }
+  return jobId;
 }
 
 app.get("/", async (_request, reply) =>
@@ -164,11 +244,15 @@ app.post("/api/migrations", async (request, reply) => {
         }
       : undefined,
     status: "draft",
+    priority: input.priority,
+    runAttempt: 0,
+    events: [],
     checkpoints: {},
     artifactDirectory: service.artifactDirectory(id),
     createdAt: now,
     updatedAt: now,
   };
+  addEvent(record, "created", "Migration created.");
   await repository.save(record);
   return reply.code(201).send(publicRecord(record));
 });
@@ -177,33 +261,124 @@ app.post("/api/migrations/:id/start", async (request, reply) => {
   const { id } = request.params as { id: string };
   const record = await repository.get(id, tenantId(request.headers));
   if (!record) return reply.code(404).send({ error: "Migration not found" });
-  if (record.status === "running") {
+  if (["running", "cancelling"].includes(record.status)) {
     return reply.code(409).send({ error: "Migration already running" });
   }
-  record.status = "queued";
+  const jobId = await enqueue(record);
+  return reply.code(202).send({ id, jobId, status: "queued" });
+});
+
+app.patch("/api/migrations/:id", async (request, reply) => {
+  const { id } = request.params as { id: string };
+  const input = updateSchema.parse(request.body);
+  const record = await repository.get(id, tenantId(request.headers));
+  if (!record) return reply.code(404).send({ error: "Migration not found" });
+  if (["running", "cancelling"].includes(record.status)) {
+    return reply.code(409).send({ error: "Stop the migration before editing it" });
+  }
+  if (input.name !== undefined) record.name = input.name;
+  if (input.priority !== undefined) record.priority = input.priority;
+  if (input.destination === null) record.destination = undefined;
+  else if (input.destination) {
+    assertPublicHttpUrl(input.destination.baseUrl);
+    record.destination = {
+      baseUrl: input.destination.baseUrl,
+      username: input.destination.username,
+      publishMode: input.destination.publishMode,
+      encryptedApplicationPassword: input.destination.applicationPassword
+        ? encryptSecret(input.destination.applicationPassword, encryptionKey)
+        : undefined,
+      encryptedReceiverToken: input.destination.receiverToken
+        ? encryptSecret(input.destination.receiverToken, encryptionKey)
+        : undefined,
+    };
+  }
+  record.updatedAt = new Date().toISOString();
+  addEvent(record, "updated", "Migration settings updated.");
+  await repository.save(record);
+  return publicRecord(record);
+});
+
+app.delete("/api/migrations/:id", async (request, reply) => {
+  const { id } = request.params as { id: string };
+  const record = await repository.get(id, tenantId(request.headers));
+  if (!record) return reply.code(404).send({ error: "Migration not found" });
+  if (["running", "cancelling"].includes(record.status)) {
+    return reply.code(409).send({ error: "Cancel the migration before deleting it" });
+  }
+  await repository.delete(id, record.tenantId);
+  return reply.code(204).send();
+});
+
+app.post("/api/migrations/:id/pause", async (request, reply) => {
+  const { id } = request.params as { id: string };
+  const record = await repository.get(id, tenantId(request.headers));
+  if (!record) return reply.code(404).send({ error: "Migration not found" });
+  if (record.status !== "running") {
+    return reply.code(409).send({ error: "Only a running migration can be paused" });
+  }
+  record.controlRequested = "pause";
+  record.updatedAt = new Date().toISOString();
+  addEvent(record, "updated", "Pause requested; it will stop at the next safe checkpoint.");
+  await repository.save(record);
+  return reply.code(202).send({ id, status: record.status, controlRequested: "pause" });
+});
+
+app.post("/api/migrations/:id/cancel", async (request, reply) => {
+  const { id } = request.params as { id: string };
+  const record = await repository.get(id, tenantId(request.headers));
+  if (!record) return reply.code(404).send({ error: "Migration not found" });
+  if (record.status === "queued" && !inline) {
+    const queue = migrationQueue();
+    try {
+      const job = await queue.getJob(`${record.id}-${record.runAttempt}`);
+      if (job) await job.remove();
+    } finally {
+      await queue.close();
+    }
+    record.status = "cancelled";
+    record.controlRequested = undefined;
+    addEvent(record, "cancelled", "Queued migration cancelled.");
+  } else if (record.status === "running") {
+    record.status = "cancelling";
+    record.controlRequested = "cancel";
+    addEvent(record, "updated", "Cancellation requested; it will stop at the next safe checkpoint.");
+  } else {
+    return reply.code(409).send({ error: "Migration is not queued or running" });
+  }
   record.updatedAt = new Date().toISOString();
   await repository.save(record);
-  if (inline) {
-    void service.run(record).catch((error) => app.log.error(error));
-  } else {
-    const { Queue } = await import("bullmq");
-    const queue = new Queue("np2wp-migrations", {
-      connection: { url: process.env.REDIS_URL ?? "redis://localhost:6379" },
-    });
-    await queue.add(
-      "run-migration",
-      { migrationId: id, tenantId: record.tenantId },
-      {
-        jobId: id,
-        attempts: 3,
-        backoff: { type: "exponential", delay: 10_000 },
-        removeOnComplete: 100,
-        removeOnFail: 500,
-      },
+  return reply.code(202).send({ id, status: record.status });
+});
+
+app.get("/api/system/status", async (_request, reply) => {
+  if (inline) return { mode: "inline", queue: null };
+  const queue = migrationQueue();
+  try {
+    const counts = await queue.getJobCounts(
+      "waiting",
+      "active",
+      "completed",
+      "failed",
+      "delayed",
+      "paused",
     );
+    return { mode: "distributed", queue: counts, checkedAt: new Date().toISOString() };
+  } catch (error) {
+    return reply.code(503).send({
+      mode: "distributed",
+      error: error instanceof Error ? error.message : String(error),
+    });
+  } finally {
     await queue.close();
   }
-  return reply.code(202).send({ id, status: "queued" });
+});
+
+app.get("/api/migrations/:id/events", async (request, reply) => {
+  const { id } = request.params as { id: string };
+  const record = await repository.get(id, tenantId(request.headers));
+  if (!record) return reply.code(404).send({ error: "Migration not found" });
+  return record.events ?? [];
 });
 
 app.setErrorHandler((error, _request, reply) => {

@@ -76,6 +76,14 @@ export class PostgresMigrationRepository {
     );
   }
 
+  async delete(id: string, tenantId: string): Promise<boolean> {
+    const result = await this.pool.query(
+      `DELETE FROM migrations WHERE id = $1 AND tenant_id = $2`,
+      [id, tenantId],
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
   async close(): Promise<void> {
     await this.pool.end();
   }

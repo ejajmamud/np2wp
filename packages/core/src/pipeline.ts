@@ -67,6 +67,7 @@ export interface PipelineServices {
     state: "started" | "completed",
     artifact?: string,
   ): Promise<void>;
+  beforeStep?(step: MigrationStep): Promise<void>;
 }
 
 async function artifact<T>(
@@ -95,6 +96,7 @@ export async function runMigrationPipeline(
     step: MigrationStep,
     compute: () => Promise<T>,
   ): Promise<T> => {
+    await services.beforeStep?.(step);
     await services.onStep?.(step, "started");
     const key = `${prefix}${step}.json`;
     const result = await artifact(store, key, compute);

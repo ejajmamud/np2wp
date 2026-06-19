@@ -15,6 +15,8 @@ export const migrationStatusSchema = z.enum([
   "draft",
   "queued",
   "running",
+  "paused",
+  "cancelling",
   "needs_input",
   "failed",
   "completed",
@@ -136,6 +138,26 @@ export interface MigrationProgress {
   updatedAt: string;
 }
 
+export type MigrationEventKind =
+  | "created"
+  | "queued"
+  | "started"
+  | "progress"
+  | "paused"
+  | "cancelled"
+  | "failed"
+  | "completed"
+  | "updated";
+
+export interface MigrationEvent {
+  id: string;
+  kind: MigrationEventKind;
+  message: string;
+  createdAt: string;
+  step?: MigrationStep;
+  metadata?: Record<string, unknown>;
+}
+
 export interface MigrationRecord {
   id: string;
   tenantId: string;
@@ -146,11 +168,17 @@ export interface MigrationRecord {
     encryptedReceiverToken?: string;
   };
   status: MigrationStatus;
+  priority: number;
+  runAttempt: number;
+  controlRequested?: "pause" | "cancel";
   currentStep?: MigrationStep;
   progress?: MigrationProgress;
+  events: MigrationEvent[];
   checkpoints: Partial<Record<MigrationStep, string>>;
   artifactDirectory: string;
   createdAt: string;
   updatedAt: string;
+  startedAt?: string;
+  completedAt?: string;
   error?: string;
 }

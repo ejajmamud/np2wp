@@ -33,7 +33,11 @@ const artifactStore =
     : undefined;
 const service = new MigrationService(repository, encryptionKey, artifactStore);
 
-const worker = new Worker<{ migrationId: string; tenantId: string }>(
+const worker = new Worker<{
+  migrationId: string;
+  tenantId: string;
+  runAttempt?: number;
+}>(
   "np2wp-migrations",
   async (job) => {
     const migration = await repository.get(
@@ -41,7 +45,19 @@ const worker = new Worker<{ migrationId: string; tenantId: string }>(
       job.data.tenantId,
     );
     if (!migration) throw new Error("Migration record no longer exists.");
+    if (
+      job.data.runAttempt !== undefined &&
+      migration.runAttempt !== job.data.runAttempt
+    ) {
+      return {
+        migrationId: migration.id,
+        status: "superseded",
+        runAttempt: job.data.runAttempt,
+      };
+    }
+    await job.updateProgress({ step: "starting", percent: 1 });
     await service.run(migration);
+    await job.updateProgress({ step: "completed", percent: 100 });
     return { migrationId: migration.id, status: "completed" };
   },
   {
@@ -60,6 +76,12 @@ worker.on("completed", (job) =>
 worker.on("failed", (job, error) =>
   console.error(`Migration ${job?.data.migrationId ?? "unknown"} failed.`, error),
 );
+worker.on("ready", () =>
+  console.log(
+    `NP2WP worker ready; concurrency=${process.env.WORKER_CONCURRENCY ?? 2}.`,
+  ),
+);
+worker.on("error", (error) => console.error("NP2WP worker connection error.", error));
 
 async function shutdown(): Promise<void> {
   await worker.close();

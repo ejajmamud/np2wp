@@ -6,6 +6,7 @@ export interface MigrationRepository {
   list(tenantId: string): Promise<MigrationRecord[]>;
   get(id: string, tenantId: string): Promise<MigrationRecord | undefined>;
   save(record: MigrationRecord): Promise<void>;
+  delete(id: string, tenantId: string): Promise<boolean>;
 }
 
 export class FileMigrationRepository implements MigrationRepository {
@@ -48,5 +49,23 @@ export class FileMigrationRepository implements MigrationRepository {
       await rename(temporary, this.file);
     });
     return this.writes;
+  }
+
+  async delete(id: string, tenantId: string): Promise<boolean> {
+    let deleted = false;
+    this.writes = this.writes.then(async () => {
+      const records = await this.all();
+      const remaining = records.filter((record) => {
+        const match = record.id === id && record.tenantId === tenantId;
+        if (match) deleted = true;
+        return !match;
+      });
+      await mkdir(path.dirname(this.file), { recursive: true });
+      const temporary = `${this.file}.tmp`;
+      await writeFile(temporary, JSON.stringify(remaining, null, 2));
+      await rename(temporary, this.file);
+    });
+    await this.writes;
+    return deleted;
   }
 }

@@ -10,6 +10,7 @@
 
 ## Commercial v1
 
+- Full migration operations console with lifecycle controls and live activity.
 - Stripe subscriptions and usage metering.
 - Agency workspaces, team roles and white-label reports.
 - Hosted browser sessions for CAPTCHA/2FA handoff.
@@ -18,6 +19,7 @@
 
 ## Expansion
 
+- Autoscaled, adapter-specific worker pools and regional execution.
 - Source adapters for Wix, Joomla, Shopify and custom legacy CMS platforms.
 - AI-assisted content cleanup with mandatory customer approval.
 - Template marketplace for vertical-specific WordPress builds.

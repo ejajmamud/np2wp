@@ -1,4 +1,5 @@
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import {
   decryptSecret,
   runMigrationPipeline,
@@ -18,6 +19,30 @@ import {
 } from "@np2wp/newpages-adapter";
 import { WordPressClient } from "@np2wp/wordpress-client";
 import type { MigrationRepository } from "./repository.js";
+
+class MigrationControlError extends Error {
+  constructor(readonly action: "pause" | "cancel") {
+    super(action === "pause" ? "Migration paused by operator." : "Migration cancelled by operator.");
+  }
+}
+
+function appendEvent(
+  record: MigrationRecord,
+  kind: MigrationRecord["events"][number]["kind"],
+  message: string,
+  metadata?: Record<string, unknown>,
+): void {
+  record.events ??= [];
+  record.events.push({
+    id: randomUUID(),
+    kind,
+    message,
+    createdAt: new Date().toISOString(),
+    step: record.currentStep,
+    metadata,
+  });
+  record.events = record.events.slice(-250);
+}
 
 function validateBundle(bundle: MigrationBundle): MigrationBundle {
   const warnings = [...bundle.warnings];
@@ -71,8 +96,12 @@ export class MigrationService {
     }
 
     record.status = "running";
+    record.controlRequested = undefined;
     record.error = undefined;
-    record.updatedAt = new Date().toISOString();
+    record.startedAt = new Date().toISOString();
+    record.completedAt = undefined;
+    record.updatedAt = record.startedAt;
+    appendEvent(record, "started", `Run ${record.runAttempt} started.`);
     await this.repository.save(record);
     try {
       await runMigrationPipeline(
@@ -109,6 +138,14 @@ export class MigrationService {
                 verifiedAt: new Date().toISOString(),
               })
             : undefined,
+          beforeStep: async (step) => {
+            const latest = await this.repository.get(record.id, record.tenantId);
+            if (latest?.controlRequested) {
+              record.controlRequested = latest.controlRequested;
+              throw new MigrationControlError(latest.controlRequested);
+            }
+            record.currentStep = step;
+          },
           onStep: async (
             step: MigrationStep,
             state: "started" | "completed",
@@ -124,17 +161,48 @@ export class MigrationService {
             };
             if (checkpoint) record.checkpoints[step] = checkpoint;
             record.updatedAt = new Date().toISOString();
+            appendEvent(
+              record,
+              "progress",
+              record.progress.message,
+              { completed: record.progress.completed, total: record.progress.total },
+            );
             await this.repository.save(record);
           },
         },
       );
       record.status = "completed";
-      record.updatedAt = new Date().toISOString();
+      record.progress = record.currentStep
+        ? {
+            step: record.currentStep,
+            completed: 1,
+            total: 1,
+            message: "Migration completed",
+            updatedAt: new Date().toISOString(),
+          }
+        : record.progress;
+      record.completedAt = new Date().toISOString();
+      record.updatedAt = record.completedAt;
+      appendEvent(record, "completed", "Migration completed successfully.");
       await this.repository.save(record);
     } catch (error) {
+      if (error instanceof MigrationControlError) {
+        record.status = error.action === "pause" ? "paused" : "cancelled";
+        record.controlRequested = undefined;
+        record.error = undefined;
+        record.updatedAt = new Date().toISOString();
+        appendEvent(
+          record,
+          error.action === "pause" ? "paused" : "cancelled",
+          error.message,
+        );
+        await this.repository.save(record);
+        return;
+      }
       record.status = "failed";
       record.error = error instanceof Error ? error.message : String(error);
       record.updatedAt = new Date().toISOString();
+      appendEvent(record, "failed", record.error);
       await this.repository.save(record);
       throw error;
     }

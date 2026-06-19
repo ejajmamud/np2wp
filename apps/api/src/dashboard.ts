@@ -3,69 +3,70 @@ export const dashboardHtml = `<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>NewPages → WordPress</title>
+  <title>NP2WP Operations</title>
   <style>
-    :root{font-family:Inter,ui-sans-serif,system-ui;color:#17202a;background:#f4f7fb}
-    *{box-sizing:border-box}body{margin:0}.shell{max-width:1180px;margin:auto;padding:28px}
-    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
-    h1{margin:0;font-size:28px}.tag{background:#111827;color:white;padding:7px 11px;border-radius:999px;font-size:12px}
-    .grid{display:grid;grid-template-columns:360px 1fr;gap:22px}.card{background:white;border:1px solid #dce4ee;border-radius:16px;padding:20px;box-shadow:0 8px 30px #17202a0a}
-    label{display:block;font-size:12px;font-weight:700;margin:13px 0 6px}input,select{width:100%;padding:10px 12px;border:1px solid #c9d5e2;border-radius:9px}
-    button{margin-top:16px;border:0;border-radius:9px;padding:11px 15px;background:#e11d48;color:white;font-weight:750;cursor:pointer}
-    table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:11px;border-bottom:1px solid #edf1f5;font-size:13px}
-    .status{font-weight:700}.muted{color:#637083}.error{color:#b91c1c;max-width:280px}.empty{padding:50px;text-align:center;color:#637083}
-    @media(max-width:850px){.grid{grid-template-columns:1fr}.shell{padding:16px}}
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;color:#e8edf5;background:#090d14;--panel:#111722;--panel2:#151d2a;--line:#253044;--muted:#8e9bb0;--brand:#7c5cff;--cyan:#22d3ee;--green:#34d399;--yellow:#fbbf24;--red:#fb7185}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 80% -10%,#28205f55,transparent 35%),#090d14}
+    button,input,select{font:inherit}.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+    aside{border-right:1px solid var(--line);padding:24px 18px;background:#0b1018cc}.brand{font-size:20px;font-weight:900;letter-spacing:-.5px}.brand b{color:#9d87ff}.sub{color:var(--muted);font-size:12px;margin-top:4px}
+    nav{margin-top:34px}.nav{display:flex;gap:10px;align-items:center;padding:11px 12px;border-radius:9px;color:#b7c1d2;font-size:14px}.nav.active{background:#7960ff20;color:#fff;border:1px solid #7960ff44}
+    .aside-foot{position:fixed;bottom:24px;width:190px;color:var(--muted);font-size:11px;line-height:1.5}
+    main{padding:28px 34px;min-width:0}.top{display:flex;justify-content:space-between;align-items:center;gap:20px}.eyebrow{color:#9d87ff;text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:1.5px}
+    h1{font-size:28px;margin:4px 0 0;letter-spacing:-1px}.top-actions{display:flex;align-items:center;gap:12px}.health{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 12px;font-size:12px;color:var(--muted)}.health i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--yellow);margin-right:7px}
+    button{border:0;border-radius:9px;padding:10px 13px;background:#273248;color:#eaf0fa;font-weight:750;cursor:pointer}button:hover{filter:brightness(1.12)}button.primary{background:linear-gradient(135deg,#7c5cff,#6246ea)}button.danger{background:#3a1821;color:#ff9caf}button.ghost{background:transparent;border:1px solid var(--line)}button.small{padding:7px 9px;font-size:12px;margin:0}
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:26px 0}.metric{background:linear-gradient(145deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:17px}.metric span{font-size:12px;color:var(--muted)}.metric strong{display:block;font-size:25px;margin-top:8px}.metric em{font-style:normal;font-size:11px;color:#718097}
+    .panel{background:#101721dd;border:1px solid var(--line);border-radius:16px;overflow:hidden}.panel-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}.panel-head h2{margin:0;font-size:16px}.filters{display:flex;gap:8px}.filters input,.filters select{width:auto;background:#0b111a;border:1px solid var(--line);color:#dfe7f2;border-radius:8px;padding:8px 10px}
+    table{width:100%;border-collapse:collapse}th{padding:11px 15px;color:#77859a;font-size:10px;text-transform:uppercase;letter-spacing:1px;text-align:left}td{padding:15px;border-top:1px solid #202a3a;font-size:13px;vertical-align:middle}.name{font-weight:800;color:#f4f7fb}.source{color:#9aa8bb;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;background:#2a3445;color:#b9c4d4}.badge.running,.badge.completed{background:#10352e;color:#65e3bb}.badge.queued{background:#322c16;color:#f8d765}.badge.failed,.badge.cancelled{background:#3a1821;color:#ff9caf}.badge.paused,.badge.cancelling{background:#352619;color:#ffc276}
+    .progress{width:150px}.track{height:6px;background:#232d3d;border-radius:99px;overflow:hidden;margin-bottom:5px}.fill{height:100%;background:linear-gradient(90deg,var(--brand),var(--cyan));border-radius:99px}.progress small{color:var(--muted)}.actions{display:flex;justify-content:flex-end;gap:6px;white-space:nowrap}
+    .empty{text-align:center;padding:70px;color:var(--muted)}.empty strong{display:block;color:#d9e1ec;font-size:17px;margin-bottom:5px}.error-row td{padding-top:0;border-top:0;color:#ff879b;font-size:11px}
+    dialog{color:#e8edf5;background:#111722;border:1px solid var(--line);border-radius:16px;padding:0;width:min(570px,calc(100vw - 30px));box-shadow:0 30px 100px #000b}dialog::backdrop{background:#05070bbd;backdrop-filter:blur(5px)}.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line)}.modal-head h3{margin:0}.modal-body{padding:20px 22px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.field.full{grid-column:1/-1}.field label{display:block;color:#9eabbc;font-size:11px;font-weight:750;margin-bottom:6px}.field input,.field select{width:100%;padding:10px 11px;background:#0b111a;color:#eef3f9;border:1px solid #303d52;border-radius:8px}.modal-actions{display:flex;justify-content:flex-end;gap:9px;padding:16px 22px;border-top:1px solid var(--line)}
+    .drawer{position:fixed;right:0;top:0;width:min(460px,100vw);height:100vh;background:#101721;border-left:1px solid var(--line);box-shadow:-20px 0 60px #0008;z-index:5;transform:translateX(100%);transition:.22s ease;padding:24px;overflow:auto}.drawer.open{transform:none}.drawer h2{margin:6px 0}.drawer-close{float:right}.details{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0}.detail{background:#0b111a;border:1px solid var(--line);border-radius:10px;padding:11px}.detail span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase}.detail b{display:block;margin-top:5px;font-size:13px}.timeline{border-left:1px solid #344158;margin:18px 0 0 8px;padding-left:18px}.event{position:relative;margin-bottom:18px}.event:before{content:"";position:absolute;width:8px;height:8px;border-radius:50%;background:#8168ff;left:-23px;top:4px;box-shadow:0 0 0 4px #171d32}.event b{font-size:12px}.event p{color:#98a5b7;font-size:12px;margin:4px 0}.event time{font-size:10px;color:#647287}
+    .toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);background:#202b3e;border:1px solid #394761;padding:11px 15px;border-radius:10px;opacity:0;pointer-events:none;transition:.2s;z-index:10}.toast.show{opacity:1;transform:translate(-50%,0)}
+    @media(max-width:980px){.app{grid-template-columns:1fr}aside{display:none}main{padding:20px}.metrics{grid-template-columns:repeat(2,1fr)}.hide-mobile{display:none}}@media(max-width:600px){.metrics{grid-template-columns:1fr 1fr}.top{align-items:flex-start;flex-direction:column}.panel{overflow:auto}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}}
   </style>
 </head>
-<body><div class="shell">
-  <header><div><h1>NewPages → WordPress</h1><div class="muted">Migration control plane</div></div><span class="tag">MVP</span></header>
-  <div class="grid">
-    <form class="card" id="create">
-      <h2>New migration</h2>
-      <label>Name</label><input name="name" required placeholder="Client website">
-      <label>Public website</label><input name="publicUrl" type="url" required placeholder="https://example.com">
-      <label>Newpages login URL</label><input name="cmsLoginUrl" type="url" placeholder="https://www.newpages.com.my/v2/en/login.html">
-      <label>Newpages username</label><input name="username">
-      <label>Newpages password</label><input name="password" type="password">
-      <label>WordPress URL (optional)</label><input name="wordpressUrl" type="url" placeholder="https://staging.example.com">
-      <label>Receiver token (optional)</label><input name="receiverToken" type="password">
-      <button>Create migration</button>
-      <div id="form-message" class="muted"></div>
-    </form>
-    <section class="card"><h2>Migrations</h2><div id="list" class="empty">Loading…</div></section>
-  </div>
-</div>
+<body><div class="app">
+<aside><div class="brand"><b>NP2</b>WP</div><div class="sub">Migration Operations Cloud</div><nav><div class="nav active">◈ &nbsp; Migrations</div><div class="nav">◎ &nbsp; Sources</div><div class="nav">◇ &nbsp; Destinations</div><div class="nav">▦ &nbsp; Reports</div><div class="nav">⚙ &nbsp; Workspace</div></nav><div class="aside-foot">CONTROL PLANE · V0.2<br>Distributed workers enabled</div></aside>
+<main>
+  <div class="top"><div><div class="eyebrow">Operations</div><h1>Migration control center</h1></div><div class="top-actions"><div class="health" id="health"><i></i>Checking infrastructure</div><button class="primary" onclick="openCreate()">+ New migration</button></div></div>
+  <section class="metrics"><div class="metric"><span>Total migrations</span><strong id="m-total">0</strong><em>workspace lifetime</em></div><div class="metric"><span>Active workload</span><strong id="m-active">0</strong><em>queued + running</em></div><div class="metric"><span>Completed</span><strong id="m-complete">0</strong><em>successful migrations</em></div><div class="metric"><span>Needs attention</span><strong id="m-failed">0</strong><em>failed or paused</em></div></section>
+  <section class="panel"><div class="panel-head"><h2>Migration runs</h2><div class="filters"><input id="search" placeholder="Search…" oninput="render()"><select id="status-filter" onchange="render()"><option value="">All statuses</option><option>running</option><option>queued</option><option>failed</option><option>completed</option><option>paused</option></select></div></div><div id="list"><div class="empty">Loading operations…</div></div></section>
+</main></div>
+
+<dialog id="create-dialog"><form id="create"><div class="modal-head"><h3>Create migration</h3><button type="button" class="ghost small" onclick="this.closest('dialog').close()">✕</button></div><div class="modal-body"><div class="form-grid">
+  <div class="field full"><label>Migration name</label><input name="name" required placeholder="Grease Expert production migration"></div>
+  <div class="field full"><label>Public website</label><input name="publicUrl" type="url" required placeholder="https://example.com"></div>
+  <div class="field full"><label>Newpages login URL</label><input name="cmsLoginUrl" type="url" placeholder="https://www.newpages.com.my/v2/en/login.html"></div>
+  <div class="field"><label>Newpages username</label><input name="username"></div><div class="field"><label>Newpages password</label><input name="password" type="password"></div>
+  <div class="field full"><label>WordPress URL (optional)</label><input name="wordpressUrl" type="url" placeholder="https://staging.example.com"></div>
+  <div class="field"><label>Receiver token</label><input name="receiverToken" type="password"></div><div class="field"><label>Priority</label><select name="priority"><option value="10">Critical</option><option value="8">High</option><option value="5" selected>Normal</option><option value="3">Low</option></select></div>
+</div></div><div class="modal-actions"><button type="button" class="ghost" onclick="this.closest('dialog').close()">Cancel</button><button class="primary">Create migration</button></div></form></dialog>
+
+<div class="drawer" id="drawer"><button class="drawer-close ghost small" onclick="closeDrawer()">✕</button><div class="eyebrow">Migration detail</div><div id="drawer-body"></div></div><div class="toast" id="toast"></div>
 <script>
 const token=localStorage.np2wpToken||prompt('API token','local-development-token')||'';
 localStorage.np2wpToken=token;
 const headers={'content-type':'application/json','authorization':'Bearer '+token,'x-tenant-id':'default'};
-async function load(){
- const r=await fetch('/api/migrations',{headers});const items=await r.json();
- const el=document.querySelector('#list');
- if(!items.length){el.className='empty';el.textContent='No migrations yet.';return}
- el.className='';el.innerHTML='<table><thead><tr><th>Name</th><th>Source</th><th>Status</th><th>Step</th><th></th></tr></thead><tbody>'+
- items.map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+esc(x.source.publicUrl)+'</td><td class="status">'+x.status+'</td><td>'+esc(x.currentStep||'—')+'</td><td><button onclick="start(\\''+x.id+'\\')">Run</button></td></tr><tr><td colspan="5" class="error">'+esc(x.error||'')+'</td></tr>').join('')+'</tbody></table>';
+let migrations=[],selectedId=null,loading=false;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+function toast(message){const el=document.querySelector('#toast');el.textContent=message;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2600)}
+async function api(url,options={}){const r=await fetch(url,{...options,headers:{...headers,...options.headers}});if(!r.ok){let message=await r.text();try{message=JSON.parse(message).error||message}catch{}throw new Error(message)}return r.status===204?null:r.json()}
+function pct(x){if(x.status==='completed')return 100;if(!x.progress)return x.status==='queued'?2:0;const steps=['discover','extract','normalize','optimize','validate','import','verify'];const i=Math.max(0,steps.indexOf(x.progress.step));return Math.min(99,Math.round(((i+(x.progress.completed/x.progress.total))/steps.length)*100))}
+function actions(x){const run=!['running','queued','cancelling'].includes(x.status)?'<button class="primary small" onclick="event.stopPropagation();action(\\''+x.id+'\\',\\'start\\')">'+(x.status==='paused'?'Resume':'Run')+'</button>':'';const pause=x.status==='running'?'<button class="small" onclick="event.stopPropagation();action(\\''+x.id+'\\',\\'pause\\')">Pause</button>':'';const cancel=['running','queued','cancelling'].includes(x.status)?'<button class="danger small" onclick="event.stopPropagation();action(\\''+x.id+'\\',\\'cancel\\')">Cancel</button>':'';return run+pause+cancel+'<button class="ghost small" onclick="event.stopPropagation();editMigration(\\''+x.id+'\\')">Edit</button>'}
+function render(){const q=document.querySelector('#search').value.toLowerCase(),status=document.querySelector('#status-filter').value;const items=migrations.filter(x=>(!status||x.status===status)&&(!q||x.name.toLowerCase().includes(q)||x.source.publicUrl.toLowerCase().includes(q)));document.querySelector('#m-total').textContent=migrations.length;document.querySelector('#m-active').textContent=migrations.filter(x=>['queued','running','cancelling'].includes(x.status)).length;document.querySelector('#m-complete').textContent=migrations.filter(x=>x.status==='completed').length;document.querySelector('#m-failed').textContent=migrations.filter(x=>['failed','paused','needs_input'].includes(x.status)).length;
+ const el=document.querySelector('#list');if(!items.length){el.innerHTML='<div class="empty"><strong>No matching migrations</strong>Create one or change your filters.</div>';return}
+ el.innerHTML='<table><thead><tr><th>Migration</th><th class="hide-mobile">Source</th><th>Status</th><th>Progress</th><th>Priority</th><th></th></tr></thead><tbody>'+items.map(x=>'<tr onclick="openDrawer(\\''+x.id+'\\')"><td><div class="name">'+esc(x.name)+'</div><div class="sub">Run '+(x.runAttempt||0)+' · '+new Date(x.updatedAt).toLocaleString()+'</div></td><td class="source hide-mobile">'+esc(x.source.publicUrl)+'</td><td><span class="badge '+x.status+'">'+esc(x.status)+'</span></td><td><div class="progress"><div class="track"><div class="fill" style="width:'+pct(x)+'%"></div></div><small>'+pct(x)+'% · '+esc(x.progress?.message||x.currentStep||'Not started')+'</small></div></td><td>P'+(x.priority||5)+'</td><td><div class="actions">'+actions(x)+'</div></td></tr>'+(x.error?'<tr class="error-row"><td colspan="6">⚠ '+esc(x.error)+'</td></tr>':'')).join('')+'</tbody></table>';
 }
-async function start(id){
- const r=await fetch('/api/migrations/'+id+'/start',{
-  method:'POST',
-  headers,
-  body:'{}'
- });
- if(!r.ok){
-  alert('Could not start migration: '+await r.text());
- }
- await load();
-}
-document.querySelector('#create').addEventListener('submit',async e=>{
- e.preventDefault();const f=new FormData(e.currentTarget);const body={
-  name:f.get('name'),source:{publicUrl:f.get('publicUrl'),cmsLoginUrl:f.get('cmsLoginUrl')||undefined,username:f.get('username')||undefined,password:f.get('password')||undefined,mode:f.get('username')?'authenticated':'public'},
-  destination:f.get('wordpressUrl')?{baseUrl:f.get('wordpressUrl'),receiverToken:f.get('receiverToken')||undefined,publishMode:'draft'}:undefined
- };
- const r=await fetch('/api/migrations',{method:'POST',headers,body:JSON.stringify(body)});
- document.querySelector('#form-message').textContent=r.ok?'Migration created.':await r.text();
- if(r.ok){e.currentTarget.reset();load()}
-});
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
-load();setInterval(load,5000);
+async function load(){if(loading)return;loading=true;try{migrations=await api('/api/migrations');render();if(selectedId)renderDrawer(migrations.find(x=>x.id===selectedId));}catch(e){toast(e.message)}finally{loading=false}}
+async function loadHealth(){try{const s=await api('/api/system/status');const q=s.queue;document.querySelector('#health').innerHTML='<i style="background:#34d399"></i>'+(q?'Queue online · '+q.active+' active · '+q.waiting+' waiting':'Inline execution')}catch(e){document.querySelector('#health').innerHTML='<i style="background:#fb7185"></i>Queue unavailable'}}
+async function action(id,name){try{await api('/api/migrations/'+id+'/'+name,{method:'POST',body:'{}'});toast(name[0].toUpperCase()+name.slice(1)+' requested');await load()}catch(e){toast(e.message)}}
+async function editMigration(id){const x=migrations.find(m=>m.id===id);const name=prompt('Migration name',x.name);if(name===null)return;const priority=Number(prompt('Priority: 1 low — 10 critical',String(x.priority||5)));if(!priority||priority<1||priority>10)return toast('Priority must be from 1 to 10');try{await api('/api/migrations/'+id,{method:'PATCH',body:JSON.stringify({name,priority})});toast('Migration updated');await load()}catch(e){toast(e.message)}}
+async function removeMigration(id){if(!confirm('Permanently delete this migration record?'))return;try{await api('/api/migrations/'+id,{method:'DELETE'});closeDrawer();toast('Migration deleted');await load()}catch(e){toast(e.message)}}
+function openCreate(){document.querySelector('#create-dialog').showModal()}
+function openDrawer(id){selectedId=id;document.querySelector('#drawer').classList.add('open');renderDrawer(migrations.find(x=>x.id===id))}
+function closeDrawer(){selectedId=null;document.querySelector('#drawer').classList.remove('open')}
+function renderDrawer(x){if(!x)return;const events=(x.events||[]).slice().reverse();document.querySelector('#drawer-body').innerHTML='<h2>'+esc(x.name)+'</h2><div class="sub">'+esc(x.source.publicUrl)+'</div><div class="details"><div class="detail"><span>Status</span><b>'+esc(x.status)+'</b></div><div class="detail"><span>Priority</span><b>P'+(x.priority||5)+'</b></div><div class="detail"><span>Current step</span><b>'+esc(x.currentStep||'—')+'</b></div><div class="detail"><span>Run attempt</span><b>'+(x.runAttempt||0)+'</b></div></div><div class="actions" style="justify-content:flex-start">'+actions(x)+'<button class="danger small" onclick="removeMigration(\\''+x.id+'\\')">Delete</button></div><h3 style="margin-top:28px">Live activity</h3><div class="timeline">'+(events.length?events.map(e=>'<div class="event"><b>'+esc(e.kind)+'</b><p>'+esc(e.message)+'</p><time>'+new Date(e.createdAt).toLocaleString()+'</time></div>').join(''):'<div class="sub">No activity recorded yet.</div>')+'</div>'}
+document.querySelector('#create').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const body={name:f.get('name'),priority:Number(f.get('priority')),source:{publicUrl:f.get('publicUrl'),cmsLoginUrl:f.get('cmsLoginUrl')||undefined,username:f.get('username')||undefined,password:f.get('password')||undefined,mode:f.get('username')?'authenticated':'public'},destination:f.get('wordpressUrl')?{baseUrl:f.get('wordpressUrl'),receiverToken:f.get('receiverToken')||undefined,publishMode:'draft'}:undefined};try{await api('/api/migrations',{method:'POST',body:JSON.stringify(body)});e.currentTarget.reset();document.querySelector('#create-dialog').close();toast('Migration created');await load()}catch(err){toast(err.message)}});
+load();loadHealth();setInterval(load,2000);setInterval(loadHealth,10000);
 </script></body></html>`;
