@@ -210,10 +210,18 @@ app.setErrorHandler((error, _request, reply) => {
   if (error instanceof z.ZodError) {
     return reply.code(400).send({ error: "Invalid request", issues: error.issues });
   }
-  if ("statusCode" in error && typeof error.statusCode === "number") {
-    return reply.code(error.statusCode).send({
-      error: error.message,
-      code: "code" in error ? error.code : undefined,
+  const httpError = error as {
+    statusCode?: unknown;
+    message?: unknown;
+    code?: unknown;
+  };
+  if (typeof httpError.statusCode === "number") {
+    return reply.code(httpError.statusCode).send({
+      error:
+        typeof httpError.message === "string"
+          ? httpError.message
+          : "Request failed",
+      code: typeof httpError.code === "string" ? httpError.code : undefined,
     });
   }
   app.log.error(error);
