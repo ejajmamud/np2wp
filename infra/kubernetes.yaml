@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: np2wp-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: np2wp-api }
+  template:
+    metadata:
+      labels: { app: np2wp-api }
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/example/np2wp-api:latest
+          ports: [{ containerPort: 4300 }]
+          envFrom: [{ secretRef: { name: np2wp-secrets } }]
+          readinessProbe:
+            httpGet: { path: /health, port: 4300 }
+            initialDelaySeconds: 5
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: "1", memory: 512Mi }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: np2wp-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: np2wp-worker }
+  template:
+    metadata:
+      labels: { app: np2wp-worker }
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/example/np2wp-worker:latest
+          envFrom: [{ secretRef: { name: np2wp-secrets } }]
+          resources:
+            requests: { cpu: "1", memory: 1Gi }
+            limits: { cpu: "2", memory: 3Gi }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: np2wp-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: np2wp-api
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 65 }

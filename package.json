@@ -1,0 +1,21 @@
+{
+  "name": "newpages-to-wordpress",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-tenant Newpages to WordPress migration platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @np2wp/core && npm run build -w @np2wp/database && npm run build -w @np2wp/storage && npm run build -w @np2wp/newpages-adapter && npm run build -w @np2wp/wordpress-client && npm run build -w @np2wp/api && npm run build -w @np2wp/worker",
+    "dev": "npm run dev -w @np2wp/api",
+    "worker": "npm run dev -w @np2wp/worker",
+    "test": "npm run build && npm run test --workspaces --if-present",
+    "typecheck": "npm run build && npm run typecheck --workspaces --if-present",
+    "lint:php": "php -l wordpress-plugin/newpages-migrator/newpages-migrator.php"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

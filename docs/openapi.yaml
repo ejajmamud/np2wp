@@ -1,0 +1,97 @@
+openapi: 3.1.0
+info:
+  title: NewPages to WordPress API
+  version: 0.1.0
+servers:
+  - url: https://api.example.com
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      security: []
+      responses:
+        "200":
+          description: Service health
+  /api/migrations:
+    get:
+      summary: List tenant migrations
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      responses:
+        "200":
+          description: Migration list
+    post:
+      summary: Create a migration
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMigration"
+      responses:
+        "201":
+          description: Migration created
+  /api/migrations/{id}:
+    get:
+      summary: Get migration progress
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Migration
+  /api/migrations/{id}/start:
+    post:
+      summary: Queue or run a migration
+      parameters:
+        - $ref: "#/components/parameters/Tenant"
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "202":
+          description: Migration queued
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    Tenant:
+      name: x-tenant-id
+      in: header
+      required: true
+      schema: { type: string }
+  schemas:
+    Source:
+      type: object
+      required: [publicUrl, mode]
+      properties:
+        publicUrl: { type: string, format: uri }
+        cmsLoginUrl: { type: string, format: uri }
+        username: { type: string }
+        password: { type: string, format: password }
+        mode: { type: string, enum: [public, authenticated] }
+    Destination:
+      type: object
+      required: [baseUrl, publishMode]
+      properties:
+        baseUrl: { type: string, format: uri }
+        username: { type: string }
+        applicationPassword: { type: string, format: password }
+        receiverToken: { type: string, format: password }
+        publishMode: { type: string, enum: [draft, publish] }
+    CreateMigration:
+      type: object
+      required: [name, source]
+      properties:
+        name: { type: string }
+        source: { $ref: "#/components/schemas/Source" }
+        destination: { $ref: "#/components/schemas/Destination" }
