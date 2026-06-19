@@ -210,6 +210,12 @@ app.setErrorHandler((error, _request, reply) => {
   if (error instanceof z.ZodError) {
     return reply.code(400).send({ error: "Invalid request", issues: error.issues });
   }
+  if ("statusCode" in error && typeof error.statusCode === "number") {
+    return reply.code(error.statusCode).send({
+      error: error.message,
+      code: "code" in error ? error.code : undefined,
+    });
+  }
   app.log.error(error);
   return reply.code(500).send({ error: "Internal server error" });
 });

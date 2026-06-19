@@ -46,7 +46,17 @@ async function load(){
  el.className='';el.innerHTML='<table><thead><tr><th>Name</th><th>Source</th><th>Status</th><th>Step</th><th></th></tr></thead><tbody>'+
  items.map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+esc(x.source.publicUrl)+'</td><td class="status">'+x.status+'</td><td>'+esc(x.currentStep||'—')+'</td><td><button onclick="start(\\''+x.id+'\\')">Run</button></td></tr><tr><td colspan="5" class="error">'+esc(x.error||'')+'</td></tr>').join('')+'</tbody></table>';
 }
-async function start(id){await fetch('/api/migrations/'+id+'/start',{method:'POST',headers});load()}
+async function start(id){
+ const r=await fetch('/api/migrations/'+id+'/start',{
+  method:'POST',
+  headers,
+  body:'{}'
+ });
+ if(!r.ok){
+  alert('Could not start migration: '+await r.text());
+ }
+ await load();
+}
 document.querySelector('#create').addEventListener('submit',async e=>{
  e.preventDefault();const f=new FormData(e.currentTarget);const body={
   name:f.get('name'),source:{publicUrl:f.get('publicUrl'),cmsLoginUrl:f.get('cmsLoginUrl')||undefined,username:f.get('username')||undefined,password:f.get('password')||undefined,mode:f.get('username')?'authenticated':'public'},
