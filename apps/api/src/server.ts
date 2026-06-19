@@ -145,7 +145,17 @@ function migrationQueue(): Queue {
 }
 
 async function enqueue(record: MigrationRecord): Promise<string> {
-  record.runAttempt = (record.runAttempt ?? 0) + 1;
+  const priority =
+    Number.isInteger(record.priority) &&
+    record.priority >= 1 &&
+    record.priority <= 10
+      ? record.priority
+      : 5;
+  record.priority = priority;
+  record.events ??= [];
+  record.runAttempt = Number.isInteger(record.runAttempt)
+    ? record.runAttempt + 1
+    : 1;
   record.status = "queued";
   record.controlRequested = undefined;
   record.error = undefined;
@@ -153,7 +163,7 @@ async function enqueue(record: MigrationRecord): Promise<string> {
   const jobId = `${record.id}-${record.runAttempt}`;
   addEvent(record, "queued", `Run ${record.runAttempt} queued.`, {
     jobId,
-    priority: record.priority,
+    priority,
   });
   await repository.save(record);
 
@@ -173,7 +183,7 @@ async function enqueue(record: MigrationRecord): Promise<string> {
       },
       {
         jobId,
-        priority: 11 - record.priority,
+        priority: 11 - priority,
         attempts: 3,
         backoff: { type: "exponential", delay: 10_000 },
         removeOnComplete: 100,
